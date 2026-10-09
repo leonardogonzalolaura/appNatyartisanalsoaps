@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useCart } from '../store/cart.jsx';
 import { formatPrice } from '../utils/currency.js';
 
@@ -45,8 +45,18 @@ export function useReveal(deps = []) {
   }, deps);
 }
 
+const NAV_LINKS = [
+  ['/', 'Inicio', '🏠'],
+  ['/tienda', 'Tienda', '🧼'],
+  ['/ofertas', 'Ofertas', '✨'],
+  ['/videos', 'Videos', '🎥'],
+  ['/nosotros', 'Nosotros', '🌿'],
+  ['/contacto', 'Contacto', '💌']
+];
+
 export function Header({ config }) {
   const { items, total, count } = useCart();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [bump, setBump] = useState(false);
   useEffect(() => {
@@ -55,6 +65,14 @@ export function Header({ config }) {
     const t = setTimeout(() => setBump(false), 500);
     return () => clearTimeout(t);
   }, [count]);
+  // Cerrar drawer al navegar + bloquear scroll de fondo + cerrar con Escape
+  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    const onKey = (e) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
+  }, [open ]);
   void items;
   return (
     <>
@@ -66,17 +84,37 @@ export function Header({ config }) {
           <img src="/logo.jpg" alt="Naty" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover' }} />
           <strong style={{ color: 'var(--verde)', fontSize: '1.15rem' }}>Jabones Artesanales Naty</strong>
         </Link>
-        <button className="hamburger" onClick={() => setOpen(!open)} aria-label="Menú">☰</button>
-        <nav className={`nav-links${open ? ' open' : ''}`} onClick={() => setOpen(false)}>
-          <Link to="/">Inicio</Link>
-          <Link to="/tienda">Tienda</Link>
-          <Link to="/ofertas">Ofertas</Link>
-          <Link to="/videos">Videos</Link>
-          <Link to="/nosotros">Nosotros</Link>
-          <Link to="/contacto">Contacto</Link>
-          <Link to="/carrito" className={`cart-badge${bump ? ' bump' : ''}`}>🛒 Carrito ({count}) · {formatPrice(total, config)}</Link>
+        <button className={`hamburger${open ? ' open' : ''}`} onClick={() => setOpen(!open)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open}>
+          <span /><span />
+        </button>
+        <nav className="nav-links nav-desktop">
+          {NAV_LINKS.map(([to, label]) => <NavLink key={to} to={to}>{label}</NavLink>)}
+          <NavLink to="/carrito" className={`cart-badge${bump ? ' bump' : ''}`}>🛒 Carrito ({count}) · {formatPrice(total, config)}</NavLink>
         </nav>
       </div>
+      <div className={`drawer-overlay${open ? ' show' : ''}`} onClick={() => setOpen(false)} aria-hidden={!open} />
+      <aside className={`drawer${open ? ' open' : ''}`} aria-hidden={!open} aria-label="Menú">
+        <div className="drawer-head">
+          <img src="/logo.jpg" alt="Naty" />
+          <div><strong>Naty 🌿</strong><small>Hecho a mano</small></div>
+          <button className="drawer-close" onClick={() => setOpen(false)} aria-label="Cerrar menú">✕</button>
+        </div>
+        <nav className="drawer-links">
+          {NAV_LINKS.map(([to, label, emoji]) => (
+            <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'active' : '')}>
+              <span className="emoji" aria-hidden>{emoji}</span> {label}
+            </NavLink>
+          ))}
+          <NavLink to="/carrito" className={({ isActive }) => `drawer-cart${isActive ? ' active' : ''}`}>
+            <span className="emoji" aria-hidden>🛒</span> Canasta ({count}) · {formatPrice(total, config)}
+          </NavLink>
+        </nav>
+        {config?.whatsapp && (
+          <a className="btn btn-wa drawer-wa" href={`https://wa.me/${config.whatsapp}`} target="_blank" rel="noreferrer">
+            <span className="emoji" aria-hidden>💬</span> Escríbenos
+          </a>
+        )}
+      </aside>
     </>
   );
 }
@@ -155,10 +193,26 @@ export function CartToast({ config }) {
 export function MiniCartBar({ config }) {
   const { items, total, count } = useCart();
   const { pathname } = useLocation();
+  const [nearFooter, setNearFooter] = useState(false);
+  // La minibarra se esconde con fundido cuando el footer está visible
+  // para no tapar sus links, y reaparece al subir.
+  useEffect(() => {
+    const footer = document.querySelector('footer.site-footer');
+    if (!footer) return;
+    const io = new IntersectionObserver(([e]) => setNearFooter(e.isIntersecting), { threshold: 0.05 });
+    io.observe(footer);
+    return () => io.disconnect();
+  }, [pathname]);
+  // Avisa al CSS para que el flotante de WhatsApp no se encime.
+  useEffect(() => {
+    const show = items.length > 0 && !nearFooter;
+    document.body.classList.toggle('has-minicart', show);
+    return () => document.body.classList.remove('has-minicart');
+  }, [items.length, nearFooter]);
   if (items.length === 0) return null;
   if (pathname.startsWith('/carrito') || pathname.startsWith('/admin')) return null;
   return (
-    <div className="minicart">
+    <div className={`minicart${nearFooter ? ' hidden-bar' : ''}`} aria-hidden={nearFooter}>
       <span>🛒 {count} · <strong>{formatPrice(total, config)}</strong></span>
       <Link className="btn btn-verde" style={{ padding: '.6rem 1.1rem' }} to="/carrito">Ver canasta →</Link>
     </div>

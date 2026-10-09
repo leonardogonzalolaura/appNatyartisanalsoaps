@@ -27,6 +27,11 @@ function Shell() {
   const { pathname } = useLocation();
   const isAdmin = pathname.startsWith('/admin');
   useEffect(() => { api.get('/api/config/public').then((c) => c?.announcement_text ? setConfig(c) : null).catch(() => {}); }, []);
+  useEffect(() => {
+    const icon = document.querySelector("link[rel='icon']");
+    if (icon && config?.logo) icon.href = config.logo;
+    document.title = 'Jabones Artesanales Naty 🌿';
+  }, [config?.logo]);
   return (
     <div className={`app-shell${isAdmin ? ' app-admin' : ''}`}>
       {!isAdmin && <Header config={config} />}

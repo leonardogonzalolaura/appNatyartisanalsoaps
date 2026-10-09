@@ -3,6 +3,10 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useCart } from '../store/cart.jsx';
 import { formatPrice } from '../utils/currency.js';
 
+// Logo de marca configurable desde /admin → Ajustes. Si el producto o
+// registro no tiene foto propia, el comodín sigue siendo /logo.jpg.
+export const brandLogo = (config) => config?.logo || '/logo.jpg';
+
 // Reveal global: observa TODO .reveal presente y futuro (navegación + datos
 // asíncronos). Si una página olvida llamar useReveal, igual se vuelve visible.
 export function RevealManager() {
@@ -81,7 +85,7 @@ export function Header({ config }) {
       )}
       <div className="container nav">
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '.7rem', textDecoration: 'none' }} onClick={() => setOpen(false)}>
-          <img src="/logo.jpg" alt="Naty" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover' }} />
+          <img src={brandLogo(config)} alt="Naty" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover' }} />
           <strong style={{ color: 'var(--verde)', fontSize: '1.15rem' }}>Jabones Artesanales Naty</strong>
         </Link>
         <button className={`hamburger${open ? ' open' : ''}`} onClick={() => setOpen(!open)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open}>
@@ -95,7 +99,7 @@ export function Header({ config }) {
       <div className={`drawer-overlay${open ? ' show' : ''}`} onClick={() => setOpen(false)} aria-hidden={!open} />
       <aside className={`drawer${open ? ' open' : ''}`} aria-hidden={!open} aria-label="Menú">
         <div className="drawer-head">
-          <img src="/logo.jpg" alt="Naty" />
+          <img src={brandLogo(config)} alt="Naty" />
           <div><strong>Naty 🌿</strong><small>Hecho a mano</small></div>
           <button className="drawer-close" onClick={() => setOpen(false)} aria-label="Cerrar menú">✕</button>
         </div>
@@ -124,7 +128,7 @@ export function Footer({ config }) {
     <footer className="site-footer">
       <div className="container footer-grid">
         <div className="footer-col footer-brand">
-          <img src="/logo.jpg" alt="Jabones Artesanales Naty" />
+          <img src={brandLogo(config)} alt="Jabones Artesanales Naty" />
           <strong>Jabones Artesanales Naty</strong>
           <p>Hecho a mano · Sin químicos dañinos 🌿<br />Lotes pequeños con amor para tu piel, tus mascotas y el planeta.</p>
           <div className="footer-social">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { brandLogo } from '../components/ui.jsx';
 
 const TABS = [
   ['dashboard', '🏠 Inicio'],
@@ -34,7 +35,7 @@ export function AdminLogin() {
   return (
     <main className="container" style={{ maxWidth: 440, paddingTop: '3rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-        <img src="/logo.jpg" alt="Naty" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', boxShadow: 'var(--sombra)' }} />
+        <img src={brandLogo()} alt="Naty" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', boxShadow: 'var(--sombra)' }} />
       </div>
       <h1 style={{ textAlign: 'center' }}>Bienvenida Naty 🌿</h1>
       <p style={{ opacity: .7 }}>Gestiona tu tienda con calma, todo en español y con vista previa.</p>
@@ -89,11 +90,19 @@ function logout() {
 }
 
 function AdminLayout({ tab, children }) {
+  const [brand, setBrand] = useState('/logo.jpg');
+  useEffect(() => {
+    let alive = true;
+    api.get('/api/config/public').then((c) => alive && c?.logo && setBrand(c.logo)).catch(() => {});
+    const sync = () => api.get('/api/config/public').then((c) => alive && c?.logo && setBrand(c.logo)).catch(() => {});
+    window.addEventListener('focus', sync);
+    return () => { alive = false; window.removeEventListener('focus', sync); };
+  }, [tab]);
   return (
     <main className="container admin-page">
       <div className="admin-topbar">
         <Link to="/admin?tab=dashboard" className="admin-brand">
-          <img src="/logo.jpg" alt="Naty" />
+          <img src={brand} alt="Naty" />
           <div><strong>Panel Naty 🌿</strong><small>{TAB_TITLES[tab] || ''}</small></div>
         </Link>
         <div className="admin-top-actions">
@@ -139,11 +148,31 @@ export function Admin() {
     await api.del(`/api/${tab}/${id}`); load();
   };
 
+  const uploadLogo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const r = await api.upload(file);
+      setSettings({ ...settings, logo: r.url });
+    } catch { alert('No se pudo subir el logo. Intenta con una imagen más liviana 🍃'); }
+  };
+
   if (tab === 'settings') return (
     <AdminLayout tab={tab}>
       <div><h1>⚙️ Ajustes y redes</h1>
         {settings && (
           <form onSubmit={save} className="form-grid">
+            <label>Logo de marca
+              <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '.3rem' }}>
+                <img src={settings.logo || '/logo.jpg'} alt="Logo actual" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '1px solid #eee' }} />
+                <div style={{ display: 'grid', gap: '.4rem' }}>
+                  <input type="file" accept="image/*" onChange={uploadLogo} />
+                  {settings.logo && settings.logo !== '/logo.jpg' && (
+                    <button type="button" className="btn btn-ghost btn-small" onClick={() => setSettings({ ...settings, logo: '/logo.jpg' })}>Volver al logo original</button>
+                  )}
+                </div>
+              </div>
+            </label>
             {[['whatsapp', 'WhatsApp (solo números, ej: 573001234567)'], ['instagram', 'Instagram URL'], ['tiktok', 'TikTok URL'], ['facebook', 'Facebook URL'], ['announcement_text', 'Texto barra superior'], ['about_text', 'Texto Nosotros'], ['schedule', 'Horario'], ['address', 'Dirección'], ['currency_code', 'Moneda (ej: COP, PEN, MXN, USD)'], ['currency_symbol', 'Símbolo moneda (ej: $, S/)']].map(([k, label]) => (
               <label key={k}>{label}<input className="input" value={settings[k] || ''} onChange={(e) => setSettings({ ...settings, [k]: e.target.value })} placeholder={k === 'currency_code' ? 'COP' : k === 'currency_symbol' ? '$' : ''} /></label>
             ))}

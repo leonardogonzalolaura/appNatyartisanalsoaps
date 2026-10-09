@@ -59,7 +59,7 @@ export const configController = {
   get: async (req, res, next) => { try { res.json(await sqliteHelpers.get(`SELECT * FROM site_config WHERE id='main'`)); } catch (e) { next(e); } },
   update: async (req, res, next) => {
     try {
-      const keys = ['whatsapp', 'instagram', 'tiktok', 'facebook', 'announcement_text', 'announcement_enabled', 'about_text', 'schedule', 'address', 'currency_code', 'currency_symbol'];
+      const keys = ['whatsapp', 'instagram', 'tiktok', 'facebook', 'announcement_text', 'announcement_enabled', 'about_text', 'schedule', 'address', 'currency_code', 'currency_symbol', 'logo'];
       const sets = keys.filter((k) => req.body[k] !== undefined);
       if (sets.length) await sqliteHelpers.run(`UPDATE site_config SET ${sets.map((k) => `${k}=?`).join(',')} WHERE id='main'`, sets.map((k) => req.body[k]));
       res.json(await sqliteHelpers.get(`SELECT * FROM site_config WHERE id='main'`));

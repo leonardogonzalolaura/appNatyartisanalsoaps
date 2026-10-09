@@ -1,6 +1,7 @@
 // Catálogo demo local: la web SIEMPRE muestra información aunque el backend
 // esté apagado. Cuando el backend responde, se reemplaza por datos reales (/admin).
 export const FALLBACK_CONFIG = {
+  logo: '/logo.jpg',
   whatsapp: '',
   instagram: '',
   tiktok: '',

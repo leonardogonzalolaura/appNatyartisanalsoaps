@@ -1,0 +1,26 @@
+# Preview temporal sin dominio (no toca tus 3 sites). Luego se clona con server_name + certbot.
+server {
+  listen 8082;
+  listen [::]:8082;
+  server_name _;
+
+  root /var/www/naty/html;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location /api/ {
+    proxy_pass http://127.0.0.1:3020/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+  }
+
+  location /uploads/ {
+    proxy_pass http://127.0.0.1:3020/uploads/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+  }
+}

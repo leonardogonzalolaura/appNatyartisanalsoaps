@@ -301,6 +301,8 @@ body.has-minicart .naty-toasts { bottom: calc(env(safe-area-inset-bottom, 0px) +
 main h2 { margin-top: 0; }
 .card { line-height: 1.55; }
 @media (min-width: 821px) {
+  /* En escritorio AdminSection renderiza divs (ver useIsMobile): estas
+  reglas quedan como respaldo y ocultan cualquier summary residual. */
   .admin-summary { display: none; }
   details.admin-section:not([open]) > .admin-section-body { display: grid; }
   .admin-cards { display: none !important; }

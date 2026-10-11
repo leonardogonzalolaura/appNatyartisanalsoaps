@@ -92,9 +92,33 @@ function prettyItems(raw) {
   } catch { return raw || '—'; }
 }
 
-// Sección colapsable del formulario. En escritorio el CSS la muestra
-// siempre abierta e idéntica a antes; en móvil colapsa por grupos.
+// Breakpoint móvil compartido con el CSS (820px). En PC el admin muestra
+// divs planos (los <details> cerrados los oculta el shadow DOM del navegador
+// y el CSS no puede forzarlos); en móvil se conserva el <details> nativo.
+function useIsMobile() {
+  const get = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(max-width: 820px)').matches;
+  const [mobile, setMobile] = useState(get);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 820px)');
+    const fn = (e) => setMobile(e.matches);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return mobile;
+}
+
+// Sección colapsable del formulario. En escritorio renderiza divs planos
+// idénticos al admin original; en móvil colapsa por grupos.
 function AdminSection({ title, emoji, open, children }) {
+  const mobile = useIsMobile();
+  if (!mobile) {
+    return (
+      <div className="admin-section admin-section-open">
+        <div className="admin-section-body">{children}</div>
+      </div>
+    );
+  }
   return (
     <details className="admin-section" open={open}>
       <summary className="admin-summary"><span className="emoji" aria-hidden>{emoji}</span> {title} <span className="admin-caret" aria-hidden>▾</span></summary>

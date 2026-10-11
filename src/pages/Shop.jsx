@@ -125,7 +125,7 @@ export function ProductDetail({ config }) {
         </div>
       </div>
       {related.length > 0 && (
-        <section style={{ marginTop: '2rem' }}>
+        <section style={{ marginTop: '2.8rem' }}>
           <h2>También te abraza 🤍</h2>
           <div className="grid grid-3">
             {related.map((r) => <ProductCard key={r.id} product={r} config={config} />)}
@@ -144,7 +144,7 @@ export function Offers() {
     <main className="container reveal"><h1>Ofertas ✨</h1>
       <p style={{ opacity: .75 }}>Promociones vigentes, actualizadas desde el panel.</p>
       <div className="grid grid-3">{offers.map((o) => (
-        <div key={o.id} className="card" style={{ padding: '1.2rem', background: '#FFF6E3' }}>
+        <div key={o.id} className="card" style={{ padding: '1.5rem', background: '#FFF6E3' }}>
           <span className="badge badge-oferta">{o.type}</span><h3>{o.title}</h3><p>{o.description}</p>
           {o.coupon_code && <p><code>Cupón: {o.coupon_code}</code> — escríbelo en el carrito.</p>}
           <Link className="btn btn-verde" to="/tienda">Aprovechar 🌸</Link>
@@ -162,7 +162,7 @@ export function Videos() {
     <main className="container reveal"><h1>Rituales en video 🎥</h1>
       <p style={{ opacity: .75 }}>Aprende a cuidar tu piel y tus espacios con calma.</p>
       <div className="grid grid-3">{videos.map((v) => (
-        <div key={v.id} className="card" style={{ padding: '1rem' }}>
+        <div key={v.id} className="card" style={{ padding: '1.3rem' }}>
           <h3>{v.title}</h3>
           {/youtube|youtu.be/.test(v.url || '') || v.url?.includes('embed')
             ? <iframe width="100%" height="220" src={(v.url || '').replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')} title={v.title} frameBorder="0" allowFullScreen style={{ borderRadius: '1rem' }} loading="lazy" />
@@ -190,7 +190,7 @@ export function Static({ kind, config }) {
         <img src="/logo.jpg" alt="Jabones Artesanales Naty" loading="lazy" className="about-logo" />
       </section>
 
-      <section className="container reveal" style={{ marginTop: '2rem' }}>
+      <section className="container reveal" style={{ marginTop: '2.8rem' }}>
         <h2>Nuestros valores 🤍</h2>
         <div className="grid grid-4">
           {[['🌿', 'Natural de verdad', 'Sin sulfatos agresivos, sin parabenos. Ingredientes nobles que puedes leer y reconocer.'],
@@ -202,7 +202,7 @@ export function Static({ kind, config }) {
         </div>
       </section>
 
-      <section className="container reveal" style={{ marginTop: '2rem' }}>
+      <section className="container reveal" style={{ marginTop: '2.8rem' }}>
         <h2>Así nace cada jabón 🧼</h2>
         <ol className="about-steps">
           {[['1', '🌻 Selección', 'Elegimos aceites nobles, avena, miel, lavanda y manzanilla de origen confiable.'],
@@ -214,7 +214,7 @@ export function Static({ kind, config }) {
         </ol>
       </section>
 
-      <section className="container reveal" style={{ marginTop: '2rem' }}>
+      <section className="container reveal" style={{ marginTop: '2.8rem' }}>
         <div className="card about-cta">
           <h2>Tu piel merece paz 🌸</h2>
           <p>Prueba tu primer ritual Naty y siente la diferencia de lo artesanal.</p>

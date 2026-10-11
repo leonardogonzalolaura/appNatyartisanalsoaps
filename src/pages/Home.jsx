@@ -39,12 +39,12 @@ export function Home({ config }) {
         </div>
       </section>
 
-      <section className="container reveal" style={{ marginTop: '2rem' }}>
+      <section className="container reveal" style={{ marginTop: '2.8rem' }}>
         <h2>Categorías 🌼</h2>
         <div className="grid grid-4">
           {data.categories.map((c) => (
-            <Link key={c.id} to={`/tienda?cat=${c.slug}`} className="card" style={{ textDecoration: 'none', padding: '1rem', textAlign: 'center' }}>
-              <img src={c.image || '/logo.jpg'} alt={c.name} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: '1rem' }} />
+            <Link key={c.id} to={`/tienda?cat=${c.slug}`} className="card" style={{ textDecoration: 'none', padding: '1.3rem', textAlign: 'center' }}>
+              <img src={c.image || '/logo.jpg'} alt={c.name} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: '1rem' }} />
               <h3>{c.name}</h3>
               <small style={{ opacity: .7 }}>{c.description || ''}</small>
             </Link>
@@ -53,7 +53,7 @@ export function Home({ config }) {
         </div>
       </section>
 
-      <section className="container reveal" style={{ marginTop: '2rem' }}>
+      <section className="container reveal" style={{ marginTop: '2.8rem' }}>
         <h2>Destacados 🧼</h2>
         <p style={{ opacity: .75 }}>Nuestros favoritos en {config?.currency_code || 'COP'} {config?.currency_symbol || '$'} — precios visibles siempre.</p>
         <div className="grid grid-3">
@@ -62,11 +62,11 @@ export function Home({ config }) {
       </section>
 
       {data.offers.length > 0 && (
-        <section className="container reveal" style={{ marginTop: '2rem' }}>
+        <section className="container reveal" style={{ marginTop: '2.8rem' }}>
           <h2>Ofertas activas ✨</h2>
           <div className="grid grid-3">
             {data.offers.map((o) => (
-              <div key={o.id} className="card" style={{ padding: '1.2rem', background: '#FFF6E3' }}>
+              <div key={o.id} className="card" style={{ padding: '1.5rem', background: '#FFF6E3' }}>
                 <span className="badge badge-oferta">{o.type}</span>
                 <h3>{o.title}</h3>
                 <p style={{ opacity: .8 }}>{o.description}</p>
@@ -77,7 +77,7 @@ export function Home({ config }) {
         </section>
       )}
 
-      <section className="container reveal" style={{ marginTop: '2rem', background: '#fff', borderRadius: '2rem', padding: '1.5rem', boxShadow: 'var(--sombra)' }}>
+      <section className="container reveal" style={{ marginTop: '2.8rem', background: '#fff', borderRadius: '2rem', padding: '2rem', boxShadow: 'var(--sombra)' }}>
         <h2>Un ritual de calma 🍃</h2>
         <p style={{ opacity: .8 }}>Sin sulfatos agresivos · Aceites nobles · Aromas que abrazan. Cada jabón se cura 4 semanas para cuidar tu piel y tu paz.</p>
         <div className="grid grid-3">
@@ -88,11 +88,11 @@ export function Home({ config }) {
       </section>
 
       {data.testimonials.length > 0 && (
-        <section className="container reveal" style={{ marginTop: '2rem' }}>
+        <section className="container reveal" style={{ marginTop: '2.8rem' }}>
           <h2>Lo que sienten 💌</h2>
           <div className="grid grid-3">
             {data.testimonials.map((t) => (
-              <div key={t.id} className="card" style={{ padding: '1.2rem' }}>
+              <div key={t.id} className="card" style={{ padding: '1.5rem' }}>
                 <p style={{ fontStyle: 'italic' }}>“{t.content}”</p>
                 <strong>— {t.author}</strong>
               </div>

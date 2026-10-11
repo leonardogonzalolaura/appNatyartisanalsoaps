@@ -156,13 +156,36 @@ function sectionSubtitle(tab) {
   return s ? `${s.emoji} ${s.label} — ${s.desc}` : '';
 }
 
+// Píldora fija que aparece al bajar en móvil para no perder de vista
+// en qué sección estás. Solo existe en ≤820px (por CSS).
+function SectionPill({ tab, count }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const anchor = document.querySelector('.sidebar');
+    if (!anchor) return;
+    const io = new IntersectionObserver(([e]) => setShow(!e.isIntersecting && e.boundingClientRect.top < 0), { threshold: 0 });
+    io.observe(anchor);
+    return () => io.disconnect();
+  }, [tab]);
+  const goMenu = () => {
+    document.querySelector('.sidebar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return (
+    <button className={`section-pill${show ? ' show' : ''}`} onClick={goMenu} aria-hidden={!show} tabIndex={show ? 0 : -1}>
+      <span>{sectionSubtitle(tab)}</span>
+      {count != null && <span className="side-count">{count}</span>}
+      <span className="section-pill-up" aria-hidden>↑ menú</span>
+    </button>
+  );
+}
+
 function logout() {
   if (!confirm('¿Cerrar sesión del panel? 🌿')) return;
   localStorage.removeItem('naty_token');
   window.location.href = '/admin/login';
 }
 
-function AdminLayout({ tab, children }) {
+function AdminLayout({ tab, count, children }) {
   const [brand, setBrand] = useState('/logo.jpg');
   useEffect(() => {
     let alive = true;
@@ -183,6 +206,7 @@ function AdminLayout({ tab, children }) {
           <button className="btn btn-danger btn-small" onClick={logout}>Salir ⎋</button>
         </div>
       </div>
+      <SectionPill tab={tab} count={count} />
       <div className="admin-shell">
         <Sidebar tab={tab} />
         <div className="admin-content">{children}</div>
@@ -243,7 +267,7 @@ export function Admin() {
   };
 
   if (tab === 'settings') return (
-    <AdminLayout tab={tab}>
+    <AdminLayout tab={tab} count={null}>
       <div><h1>⚙️ Ajustes y redes</h1>
         {settings && (
           <form onSubmit={save} className="form-grid">
@@ -281,7 +305,7 @@ export function Admin() {
     </AdminLayout>);
 
   if (tab === 'orders') return (
-    <AdminLayout tab={tab}>
+    <AdminLayout tab={tab} count={orders.length}>
       <div><h1>🛒 Pedidos por WhatsApp</h1>
         <AdminSearch value={filter} onChange={setFilter} total={orders.length} />
         <div className="table-wrap"><table className="table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th><th>Detalle</th></tr></thead>
@@ -305,7 +329,7 @@ export function Admin() {
     </AdminLayout>);
 
   if (tab === 'dashboard') return (
-    <AdminLayout tab={tab}>
+    <AdminLayout tab={tab} count={null}>
       <div><h1>Hola Naty, tu tienda respira bien 🌸</h1>
         <div className="grid grid-3">
           {[['🧼', 'Productos', rows.length, '/admin?tab=products'], ['🖼️', 'Nuevo banner', 'subir imagen', '/admin?tab=banners'], ['✨', 'Nueva oferta', '2x1, cupones', '/admin?tab=offers'], ['⚙️', 'Redes/WhatsApp', 'conectar', '/admin?tab=settings']].map(([e, t, d, link]) => (
@@ -318,7 +342,7 @@ export function Admin() {
     </AdminLayout>);
 
   return (
-    <AdminLayout tab={tab}>
+    <AdminLayout tab={tab} count={visible.length}>
       <div>
         <h1 style={{ textTransform: 'capitalize' }}>{tab} ✨</h1>
         <form onSubmit={save} className="form-grid">

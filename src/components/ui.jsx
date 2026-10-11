@@ -233,9 +233,9 @@ export function ProductCard({ product, config }) {
     setTimeout(() => setAdded(false), 1300);
   };
   return (
-    <div className="card product-card" style={{ padding: '1rem' }}>
+    <div className="card product-card" style={{ padding: '1.3rem' }}>
       <Link to={`/producto/${product.slug}`} style={{ textDecoration: 'none' }}>
-        <img src={product.images?.[0] || product.image || '/logo.jpg'} alt={product.name} loading="lazy" style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: '1rem' }} />
+        <img src={product.images?.[0] || product.image || '/logo.jpg'} alt={product.name} loading="lazy" style={{ width: '100%', height: 205, objectFit: 'cover', borderRadius: '1rem' }} />
       </Link>
       {product.stock <= 3 && <span className="badge badge-oferta">¡Solo quedan {product.stock}!</span>}
       <h3><Link to={`/producto/${product.slug}`} style={{ textDecoration: 'none' }}>{product.name}</Link></h3>

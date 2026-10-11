@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { useReveal, ProductCard, toEmbed } from '../components/ui.jsx';
+import { useReveal, ProductCard, toEmbed, SocialLinks } from '../components/ui.jsx';
 import { useCart } from '../store/cart.jsx';
 import { useNotice } from '../store/notice.jsx';
 import { formatPrice } from '../utils/currency.js';
@@ -233,12 +233,8 @@ export function Static({ kind, config }) {
         ? <a className="btn btn-wa" href={`https://wa.me/${config.whatsapp}`} target="_blank" rel="noreferrer"><span className="emoji" aria-hidden>💬</span> Hablar por WhatsApp</a>
         : <p style={{ opacity: .7 }}>Configura tu WhatsApp en /admin → Ajustes para activar el botón.</p>}
       <p style={{ opacity: .7 }}>{config?.schedule || 'Lun–Sáb 9am–7pm'} · {config?.address || ''}</p>
-      <div style={{ display: 'flex', gap: '.7rem', flexWrap: 'wrap' }}>
-        {config?.instagram && <a href={config.instagram} target="_blank" rel="noreferrer">Instagram</a>}
-        {config?.tiktok && <a href={config.tiktok} target="_blank" rel="noreferrer">TikTok</a>}
-        {config?.facebook && <a href={config.facebook} target="_blank" rel="noreferrer">Facebook</a>}
-        {!config?.instagram && !config?.tiktok && !config?.facebook && <span style={{ opacity: .6 }}>Tus redes aparecerán aquí cuando las conectes en /admin.</span>}
-      </div>
+      <SocialLinks config={config} />
+      {!config?.instagram && !config?.tiktok && !config?.facebook && !config?.whatsapp && <span style={{ opacity: .6 }}>Tus redes aparecerán aquí cuando las conectes en /admin.</span>}
     </main>);
 }
 

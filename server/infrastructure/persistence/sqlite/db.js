@@ -20,8 +20,15 @@ function init() {
   db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, email TEXT UNIQUE, password TEXT, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     db.run(`CREATE TABLE IF NOT EXISTS categories(id TEXT PRIMARY KEY, name TEXT, slug TEXT UNIQUE, description TEXT, image TEXT, sort_order INTEGER DEFAULT 0, active INTEGER DEFAULT 1)`);
-    db.run(`CREATE TABLE IF NOT EXISTS products(id TEXT PRIMARY KEY, category_id TEXT, name TEXT, slug TEXT UNIQUE, price REAL, offer_price REAL, stock INTEGER DEFAULT 0, ingredients TEXT, benefits TEXT, how_to_use TEXT, image TEXT, images TEXT, video_url TEXT, featured INTEGER DEFAULT 0, active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    db.run(`CREATE TABLE IF NOT EXISTS banners(id TEXT PRIMARY KEY, title TEXT, subtitle TEXT, cta_text TEXT, cta_link TEXT, image TEXT, sort_order INTEGER DEFAULT 0, active INTEGER DEFAULT 1, starts_at TEXT, ends_at TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS products(id TEXT PRIMARY KEY, category_id TEXT, name TEXT, slug TEXT UNIQUE, price REAL, offer_price REAL, stock INTEGER DEFAULT 0, ingredients TEXT, benefits TEXT, how_to_use TEXT, image TEXT, images TEXT, video_url TEXT, featured INTEGER DEFAULT 0, active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, sort_order INTEGER DEFAULT 0)`);
+    db.run(`ALTER TABLE products ADD COLUMN sort_order INTEGER`, () => {});
+    // Solo rellena filas antiguas sin orden (NULL): conserva el orden actual
+    // (más reciente primero) y nunca toca lo que ya ordenaste.
+    db.run(`UPDATE products SET sort_order = -rowid * 10 WHERE sort_order IS NULL`, () => {});
+    db.run(`CREATE TABLE IF NOT EXISTS banners(id TEXT PRIMARY KEY, title TEXT, subtitle TEXT, cta_text TEXT, cta_link TEXT, image TEXT, sort_order INTEGER DEFAULT 0, active INTEGER DEFAULT 1, starts_at TEXT, ends_at TEXT, media_type TEXT DEFAULT 'image', video_url TEXT DEFAULT '', images TEXT DEFAULT '[]')`);
+    db.run(`ALTER TABLE banners ADD COLUMN media_type TEXT DEFAULT 'image'`, () => {});
+    db.run(`ALTER TABLE banners ADD COLUMN video_url TEXT DEFAULT ''`, () => {});
+    db.run(`ALTER TABLE banners ADD COLUMN images TEXT DEFAULT '[]'`, () => {});
     db.run(`CREATE TABLE IF NOT EXISTS offers(id TEXT PRIMARY KEY, title TEXT, description TEXT, type TEXT, coupon_code TEXT, starts_at TEXT, ends_at TEXT, active INTEGER DEFAULT 1)`);
     db.run(`CREATE TABLE IF NOT EXISTS videos(id TEXT PRIMARY KEY, title TEXT, url TEXT, sort_order INTEGER DEFAULT 0, active INTEGER DEFAULT 1)`);
     db.run(`CREATE TABLE IF NOT EXISTS testimonials(id TEXT PRIMARY KEY, author TEXT, content TEXT, rating INTEGER DEFAULT 5, active INTEGER DEFAULT 1)`);

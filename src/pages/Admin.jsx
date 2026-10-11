@@ -72,6 +72,20 @@ function useCrud(path) {
   return [rows, load];
 }
 
+async function handleGallery(e, setForm, form, notify) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const r = await api.upload(file);
+    const arr = parseGallery(form.images, form.image);
+    if (!arr.includes(r.url)) arr.push(r.url);
+    setForm({ ...form, images: arr });
+    notify?.('Foto agregada a la galería 🌸', 'ok');
+  } catch {
+    notify?.('No se pudo subir la imagen. Intenta con una más liviana 🍃', 'error');
+  }
+}
+
 async function handleImage(e, setForm, form, notify) {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -128,7 +142,20 @@ function AdminSection({ title, emoji, open, children }) {
 }
 
 function rowLabel(r) {
-  return r.name || r.title || (r.author ? `${r.author} — ${(r.content || '').slice(0, 60)}` : r.url) || 'Ítem';
+  if (r.name) return r.name;
+  if (r.title) return r.title;
+  if (r.author) return `${r.author} — ${(r.content || '').slice(0, 60)}`;
+  if (r.media_type === 'video') return '🎥 Video sin texto';
+  return r.url || 'Ítem';
+}
+
+function parseGallery(value, fallback) {
+  try {
+    const v = typeof value === 'string' ? JSON.parse(value || '[]') : (value || []);
+    const arr = Array.isArray(v) ? v.filter(Boolean) : [];
+    if (arr.length) return arr;
+  } catch { /* usa respaldo */ }
+  return fallback ? [fallback] : [];
 }
 
 function stockBadge(stock) {
@@ -140,16 +167,16 @@ function stockBadge(stock) {
 
 // Tarjetas para móvil: misma data y mismos handlers que la tabla.
 // En escritorio el CSS las oculta y se usa la tabla de siempre.
-function AdminCards({ tab, rows, onEdit, onDel }) {
+function AdminCards({ tab, rows, onEdit, onDel, onMove, onPin, canOrder }) {
   return (
     <div className="admin-cards">
-      {rows.map((r) => (
+      {rows.map((r, idx) => (
         <article key={r.id} className="card admin-card">
           {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
             <img src={r.image || '/logo.jpg'} alt="" loading="lazy" />
           )}
           <div className="admin-card-info">
-            <strong>{rowLabel(r)}</strong>
+            <strong>{canOrder && <span className="pos-badge">#{idx + 1} </span>}{rowLabel(r)}</strong>
             <div className="admin-card-meta">
               {tab === 'products' && (<>
                 <span className="price-sm">${Number(r.offer_price || r.price || 0).toLocaleString('es-CO')}</span>
@@ -168,6 +195,13 @@ function AdminCards({ tab, rows, onEdit, onDel }) {
             </div>
           </div>
           <div className="admin-card-actions">
+            {canOrder && (
+              <span className="order-btns">
+                <button className="icon-btn sm" title="Subir" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</button>
+                <button className="icon-btn sm" title="Bajar" disabled={idx === rows.length - 1} onClick={() => onMove(idx, 1)}>↓</button>
+                <button className="icon-btn sm pin" title="Fijar primero" disabled={idx === 0} onClick={() => onPin(idx)}>📌</button>
+              </span>
+            )}
             <button className="icon-btn" title="Editar" onClick={() => onEdit(r)}>✏️</button>
             <button className="icon-btn danger" title="Eliminar" onClick={() => onDel(r.id, rowLabel(r))}>🗑️</button>
           </div>
@@ -304,16 +338,58 @@ export function Admin() {
     return [r.name, r.title, r.author, r.content, r.url, r.coupon_code, r.description, r.subtitle]
       .filter(Boolean).join(' ').toLowerCase().includes(q);
   });
-  const openNew = () => { setForm({}); setEditing(null); setModalOpen(true); };
-  const startEdit = (r) => { setEditing(r.id); setForm(r); setModalOpen(true); };
+  const openNew = () => { setForm(tab === 'banners' ? { media_type: 'image' } : {}); setEditing(null); setModalOpen(true); };
+  const startEdit = (r) => {
+    setEditing(r.id);
+    setForm(tab === 'banners' ? { ...r, media_type: r.media_type || 'image', images: parseGallery(r.images, r.image) } : r);
+    setModalOpen(true);
+  };
+  // Orden manual (banners y productos): reescribe sort_order 10,20,30…
+  // según la posición visible. Solo sin filtro activo.
+  const canOrder = (tab === 'products' || tab === 'banners') && !filter.trim();
+  const applyOrder = async (list) => {
+    try {
+      await Promise.all(list.map((r, k) => api.put(`/api/${tab}/${r.id}`, { sort_order: (k + 1) * 10 })));
+      await load();
+      toast('Orden actualizado 🌿', 'ok');
+    } catch (err) { toast('No se pudo reordenar: ' + (err.message || ''), 'error'); }
+  };
+  const move = (idx, dir) => {
+    const j = idx + dir;
+    if (j < 0 || j >= visible.length) return;
+    const list = [...visible];
+    const [m] = list.splice(idx, 1);
+    list.splice(j, 0, m);
+    applyOrder(list);
+  };
+  const pinTop = (idx) => {
+    if (idx === 0) return;
+    const list = [...visible];
+    const [m] = list.splice(idx, 1);
+    list.unshift(m);
+    applyOrder(list);
+  };
   const closeModal = () => { setModalOpen(false); setEditing(null); setForm({}); };
 
   const save = async (e) => {
     e.preventDefault();
     try {
       if (tab === 'settings') { await api.put('/api/config', settings); toast('Ajustes guardados 🌿', 'ok'); return; }
-      if (editing) await api.put(`/api/${tab}/${editing}`, form);
-      else await api.post(`/api/${tab}`, form);
+      let payload = { ...form };
+      if (tab === 'banners') {
+        const media = payload.media_type || 'image';
+        if (media === 'video' && !(payload.video_url || '').trim()) {
+          toast('Pega la URL del video de YouTube/Shorts para el banner 🎥', 'error');
+          return;
+        }
+        if (media === 'image' && !(payload.image || '').trim() && parseGallery(payload.images).length === 0) {
+          toast('Sube al menos una foto para el banner 🖼️', 'error');
+          return;
+        }
+        payload.images = JSON.stringify(parseGallery(payload.images, payload.image));
+      }
+      if (editing) await api.put(`/api/${tab}/${editing}`, payload);
+      else await api.post(`/api/${tab}`, payload);
       setForm({}); setEditing(null); setModalOpen(false); load();
       toast('Guardado con éxito ✨', 'ok');
     } catch (err) { toast('Revisa los campos: ' + (err.message || 'error desconocido'), 'error'); }
@@ -429,8 +505,10 @@ export function Admin() {
           <AdminSection title="Datos" emoji="📋" open>
             {(tab === 'products' || tab === 'categories') && (
               <label>Nombre*<input className="input" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>)}
-            {(tab === 'banners' || tab === 'offers' || tab === 'videos') && (
+            {(tab === 'offers' || tab === 'videos') && (
               <label>Título*<input className="input" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></label>)}
+            {tab === 'banners' && (
+              <label>Título (opcional: vacío + sin subtítulo/botón = video a pantalla completa)<input className="input" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Paz para tu piel" /></label>)}
             {tab === 'testimonials' && (
               <label>Autor / cliente*<input className="input" value={form.author || ''} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="Ej: María 🌸" required /></label>)}
             {tab === 'products' && (<>
@@ -470,8 +548,27 @@ export function Admin() {
           )}
           {(tab === 'products' || tab === 'categories' || tab === 'banners' || tab === 'videos') && (
             <AdminSection title="Multimedia" emoji="🖼️">
+              {tab === 'banners' && (
+                <label>Tipo de medio<select className="select" value={form.media_type || 'image'} onChange={(e) => setForm({ ...form, media_type: e.target.value })}>
+                  <option value="image">Foto / galería</option>
+                  <option value="video">Video YouTube/Shorts</option>
+                </select></label>)}
               {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
-                <label>Foto<input type="file" accept="image/*" onChange={(e) => handleImage(e, setForm, form, toast)} />{form.image && <img src={form.image} alt="" style={{ width: 120, borderRadius: 12, marginTop: 6 }} />}</label>)}
+                <label>{tab === 'banners' && (form.media_type || 'image') === 'video' ? 'Portada del video' : 'Foto'}<input type="file" accept="image/*" onChange={(e) => handleImage(e, setForm, form, toast)} />{form.image && <img src={form.image} alt="" style={{ width: 120, borderRadius: 12, marginTop: 6 }} />}</label>)}
+              {tab === 'banners' && (form.media_type || 'image') === 'video' && (
+                <label>URL del video YouTube/Shorts*<input className="input" value={form.video_url || ''} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://youtube.com/shorts/..." required /></label>)}
+              {tab === 'banners' && (form.media_type || 'image') === 'image' && (
+                <label>Galería (opcional: el slide rota entre fotos)<input type="file" accept="image/*" onChange={(e) => handleGallery(e, setForm, form, toast)} />
+                  {parseGallery(form.images, null).length > 0 && (
+                    <span style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginTop: 6 }}>
+                      {parseGallery(form.images, null).map((src) => (
+                        <span key={src} style={{ position: 'relative' }}>
+                          <img src={src} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }} />
+                          <button type="button" aria-label="Quitar foto" onClick={() => setForm({ ...form, images: parseGallery(form.images, null).filter((u) => u !== src) })} style={{ position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}>✕</button>
+                        </span>
+                      ))}
+                    </span>)}
+                </label>)}
               {tab === 'banners' && (<>
                 <label>Texto del botón<input className="input" value={form.cta_text || ''} onChange={(e) => setForm({ ...form, cta_text: e.target.value })} placeholder="Ver tienda" /></label>
                 <label>Enlace del botón<input className="input" value={form.cta_link || ''} onChange={(e) => setForm({ ...form, cta_link: e.target.value })} placeholder="/tienda" /></label>
@@ -497,17 +594,30 @@ export function Admin() {
         </AdminModal>
         )}
         <AdminSearch value={filter} onChange={setFilter} total={visible.length} />
+        {(tab === 'products' || tab === 'banners') && !filter.trim() && visible.length > 1 && (
+          <p className="admin-hint">Ordena lo que se muestra primero con ↑ ↓ o fíjalo con 📌 — la tienda y el slider lo reflejan solos 🌿</p>)}
+        {(tab === 'products' || tab === 'banners') && !!filter.trim() && (
+          <p className="admin-hint">Limpia la búsqueda para reordenar 🍃</p>)}
         <div className="table-wrap"><table className="table admin-table" style={{ marginTop: '1rem' }}>
-          <thead><tr><th>Ítem</th><th style={{ width: 110 }}>Acciones</th></tr></thead>
-          <tbody>{visible.map((r) => (
-            <tr key={r.id}><td>{rowLabel(r)}</td>
+          <thead><tr>{canOrder && <th style={{ width: 132 }}>Orden</th>}<th>Ítem</th><th style={{ width: 110 }}>Acciones</th></tr></thead>
+          <tbody>{visible.map((r, idx) => (
+            <tr key={r.id}>
+              {canOrder && (<td><div className="order-cell">
+                <span className="pos-badge">#{idx + 1}</span>
+                <span className="order-btns">
+                  <button className="icon-btn sm" title="Subir" disabled={idx === 0} onClick={() => move(idx, -1)}>↑</button>
+                  <button className="icon-btn sm" title="Bajar" disabled={idx === visible.length - 1} onClick={() => move(idx, 1)}>↓</button>
+                  <button className="icon-btn sm pin" title="Fijar primero" disabled={idx === 0} onClick={() => pinTop(idx)}>📌</button>
+                </span>
+              </div></td>)}
+              <td>{rowLabel(r)}</td>
               <td><div className="row-actions">
                 <button className="icon-btn" title="Editar" onClick={() => startEdit(r)}>✏️</button>
                 <button className="icon-btn danger" title="Eliminar" onClick={() => del(r.id, rowLabel(r))}>🗑️</button>
               </div></td></tr>))}
           </tbody>
         </table></div>
-        <AdminCards tab={tab} rows={visible} onEdit={startEdit} onDel={del} />
+        <AdminCards tab={tab} rows={visible} onEdit={startEdit} onDel={del} onMove={move} onPin={pinTop} canOrder={canOrder} />
       </div>
     </AdminLayout>
   );

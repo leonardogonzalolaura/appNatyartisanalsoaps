@@ -30,7 +30,7 @@ export const FALLBACK_PRODUCTS = [
 ];
 
 export const FALLBACK_BANNERS = [
-  { id: 'b1', title: 'Paz para tu piel, amor en cada jabón', subtitle: 'Lavanda, avena y manzanilla. Hecho a mano, sin químicos dañinos.', cta_text: 'Ver tienda', cta_link: '/tienda', image: '/logo.jpg' }
+  { id: 'b1', title: 'Paz para tu piel, amor en cada jabón', subtitle: 'Lavanda, avena y manzanilla. Hecho a mano, sin químicos dañinos.', cta_text: 'Ver tienda', cta_link: '/tienda', image: '/logo.jpg', images: ['/logo.jpg'], media_type: 'image', video_url: '' }
 ];
 
 export const FALLBACK_OFFERS = [

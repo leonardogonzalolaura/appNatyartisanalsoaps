@@ -330,7 +330,29 @@ export function Petals() {
 
 export function toEmbed(url = '') {
   if (!url) return '';
+  if (url.includes('youtube.com/shorts/')) return url.replace('youtube.com/shorts/', 'www.youtube.com/embed/').split('?')[0];
   if (url.includes('youtube.com/watch')) return url.replace('watch?v=', 'embed/');
   if (url.includes('youtu.be/')) return url.replace('youtu.be/', 'www.youtube.com/embed/');
   return url;
+}
+
+export function youtubeId(url = '') {
+  const m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  return m ? m[1].split(/[?&#]/)[0] : '';
+}
+
+// Embed con autoplay mudo en loop (el loop de YouTube exige playlist=ID).
+export function toAutoplayEmbed(url = '') {
+  const id = youtubeId(url);
+  if (!id) return url;
+  return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&rel=0&playsinline=1`;
+}
+
+export function parseGallery(value, fallback) {
+  try {
+    const v = typeof value === 'string' ? JSON.parse(value || '[]') : (value || []);
+    const arr = Array.isArray(v) ? v.filter(Boolean) : [];
+    if (arr.length) return arr;
+  } catch { /* respaldo */ }
+  return fallback ? [fallback] : [];
 }

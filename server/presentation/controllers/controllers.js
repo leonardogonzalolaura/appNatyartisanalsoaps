@@ -4,7 +4,7 @@ import { sqliteHelpers, uid } from '../../infrastructure/persistence/sqlite/db.j
 import { CreateProduct } from '../../application/use-cases/products.usecases.js';
 
 export const productRepo = new SqliteProductRepository();
-const banners = makeCrud('banners');
+const banners = makeCrud('banners', {}, 'sort_order ASC, rowid DESC');
 const categories = makeCrud('categories');
 const offers = makeCrud('offers');
 const videos = makeCrud('videos');

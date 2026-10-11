@@ -283,7 +283,9 @@ body.has-minicart .wa-float { bottom: calc(env(safe-area-inset-bottom, 0px) + 4.
 }
 /* Admin: tarjetas (móvil) — ocultas en escritorio donde manda la tabla */
 .admin-cards { display: none; }
-.admin-card { padding: .8rem .9rem; display: flex; gap: .8rem; align-items: center; }
+.admin-card { padding: .8rem .9rem; display: flex; flex-direction: column; gap: .6rem; }
+.admin-card-top { display: flex; gap: .8rem; align-items: center; }
+.order-strip { display: none; }
 .admin-card img { width: 58px; height: 58px; border-radius: .8rem; object-fit: cover; flex: none; }
 .admin-card-info { flex: 1; min-width: 0; display: grid; gap: .3rem; }
 .admin-card-meta { display: flex; gap: .45rem; align-items: center; flex-wrap: wrap; font-size: .85rem; }
@@ -376,8 +378,8 @@ main h2 { margin-top: 0; }
   .admin-savebar .btn { flex: 1; justify-content: center; }
   .icon-btn { width: 44px; height: 44px; }
   .icon-btn.sm { width: 44px; height: 44px; }
-  /* En móvil las 5 acciones de la tarjeta respiran en 2 filas */
-  .admin-card-actions { grid-auto-flow: row; grid-template-columns: repeat(3, 44px); justify-content: end; }
+  /* En móvil las 2 acciones de la tarjeta van lado a lado */
+  .admin-card-actions { grid-auto-flow: column; justify-content: end; }
   .form-grid input[type="file"] { background: #F6F1E4; border-radius: .9rem; padding: .8rem; width: 100%; }
   .admin-search .input { max-width: none; }
 }
@@ -407,6 +409,11 @@ main h2 { margin-top: 0; }
   .minicart { font-size: .88rem; gap: .6rem; }
   /* Admin móvil: tarjetas en vez de tabla ancha */
   .admin-content .table-wrap { display: none; }
+  /* Editar arriba, ordenar en tira separada abajo */
+  .admin-card-actions { grid-auto-flow: column; }
+  .order-strip { display: flex; gap: .6rem; align-items: center; background: #F6F1E4; border-radius: .9rem; padding: .5rem .7rem; }
+  .order-strip small { opacity: .6; font-weight: 700; }
+  .order-strip .order-btns { margin-left: auto; gap: .55rem; }
   .admin-cards { display: grid; gap: .6rem; margin-top: .8rem; }
   .admin-page { padding-top: .8rem; }
   .admin-topbar { padding: .6rem .8rem; }

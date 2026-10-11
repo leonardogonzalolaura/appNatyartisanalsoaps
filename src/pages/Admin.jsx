@@ -172,11 +172,12 @@ function AdminCards({ tab, rows, onEdit, onDel, onMove, onPin, canOrder }) {
     <div className="admin-cards">
       {rows.map((r, idx) => (
         <article key={r.id} className="card admin-card">
-          {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
-            <img src={r.image || '/logo.jpg'} alt="" loading="lazy" />
-          )}
-          <div className="admin-card-info">
-            <strong>{canOrder && <span className="pos-badge">#{idx + 1} </span>}{rowLabel(r)}</strong>
+          <div className="admin-card-top">
+            {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
+              <img src={r.image || '/logo.jpg'} alt="" loading="lazy" />
+            )}
+            <div className="admin-card-info">
+              <strong>{rowLabel(r)}</strong>
             <div className="admin-card-meta">
               {tab === 'products' && (<>
                 <span className="price-sm">${Number(r.offer_price || r.price || 0).toLocaleString('es-CO')}</span>
@@ -195,16 +196,21 @@ function AdminCards({ tab, rows, onEdit, onDel, onMove, onPin, canOrder }) {
             </div>
           </div>
           <div className="admin-card-actions">
-            {canOrder && (
+            <button className="icon-btn" title="Editar" onClick={() => onEdit(r)}>✏️</button>
+            <button className="icon-btn danger" title="Eliminar" onClick={() => onDel(r.id, rowLabel(r))}>🗑️</button>
+          </div>
+          </div>
+          {canOrder && (
+            <div className="order-strip">
+              <span className="pos-badge">#{idx + 1}</span>
+              <small>Ordenar:</small>
               <span className="order-btns">
                 <button className="icon-btn sm" title="Subir" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</button>
                 <button className="icon-btn sm" title="Bajar" disabled={idx === rows.length - 1} onClick={() => onMove(idx, 1)}>↓</button>
                 <button className="icon-btn sm pin" title="Fijar primero" disabled={idx === 0} onClick={() => onPin(idx)}>📌</button>
               </span>
-            )}
-            <button className="icon-btn" title="Editar" onClick={() => onEdit(r)}>✏️</button>
-            <button className="icon-btn danger" title="Eliminar" onClick={() => onDel(r.id, rowLabel(r))}>🗑️</button>
-          </div>
+            </div>
+          )}
         </article>
       ))}
       {rows.length === 0 && <p className="admin-hint">Sin resultados 🍃</p>}

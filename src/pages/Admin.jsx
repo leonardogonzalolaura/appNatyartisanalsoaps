@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { brandLogo } from '../components/ui.jsx';
+import { useNotice } from '../store/notice.jsx';
 
 const NAV_GROUPS = [
   { id: 'contenido', label: 'Contenido', emoji: '🧺', items: [
@@ -28,6 +29,7 @@ export function AdminLogin() {
   const [password, setPassword] = useState('');
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
+  const { toast } = useNotice();
   if (localStorage.getItem('naty_token')) return <Navigate to="/admin?tab=dashboard" replace />;
   const submit = async (e) => {
     e.preventDefault();
@@ -36,8 +38,15 @@ export function AdminLogin() {
     try {
       const r = await api.post('/api/auth/login', { email, password });
       localStorage.setItem('naty_token', r.token);
+      toast('Bienvenida de nuevo, Naty 🌿', 'ok');
       nav('/admin?tab=dashboard', { replace: true });
-    } catch { alert('Credenciales inválidas. Usa el seed: admin@naty.pe / naty123'); }
+    } catch (err) {
+      // Distingue sin conexión (red) de credenciales wrong (401)
+      const offline = err instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(err?.message || '');
+      toast(offline
+        ? 'No se pudo contactar al servidor. Revisa tu conexión e inténtalo de nuevo 🍃'
+        : 'Correo o contraseña incorrectos. Revisa e inténtalo de nuevo 🌿', 'error');
+    }
     finally { setBusy(false); }
   };
   return (
@@ -63,12 +72,16 @@ function useCrud(path) {
   return [rows, load];
 }
 
-async function handleImage(e, setForm, form) {
+async function handleImage(e, setForm, form, notify) {
   const file = e.target.files?.[0];
   if (!file) return;
-  const r = await api.upload(file);
-  setForm({ ...form, image: r.url });
-  alert('Imagen subida con éxito 🌸');
+  try {
+    const r = await api.upload(file);
+    setForm({ ...form, image: r.url });
+    notify?.('Imagen subida con éxito 🌸', 'ok');
+  } catch {
+    notify?.('No se pudo subir la imagen. Intenta con una más liviana 🍃', 'error');
+  }
 }
 
 function prettyItems(raw) {
@@ -132,7 +145,7 @@ function AdminCards({ tab, rows, onEdit, onDel }) {
           </div>
           <div className="admin-card-actions">
             <button className="icon-btn" title="Editar" onClick={() => onEdit(r)}>✏️</button>
-            <button className="icon-btn danger" title="Eliminar" onClick={() => onDel(r.id)}>🗑️</button>
+            <button className="icon-btn danger" title="Eliminar" onClick={() => onDel(r.id, rowLabel(r))}>🗑️</button>
           </div>
         </article>
       ))}
@@ -146,6 +159,28 @@ function AdminSearch({ value, onChange, total }) {
     <div className="admin-search">
       <input className="input" placeholder="🔍 Buscar…" value={value} onChange={(e) => onChange(e.target.value)} />
       <small>{total} ítems</small>
+    </div>
+  );
+}
+
+// Modal reutilizable para crear/editar: la lista queda siempre visible
+// detrás y el formulario vive dentro. En móvil es hoja inferior.
+function AdminModal({ title, onClose, children }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-dialog" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <strong>{title}</strong>
+          <button type="button" className="drawer-close" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </div>
     </div>
   );
 }
@@ -179,14 +214,9 @@ function SectionPill({ tab, count }) {
   );
 }
 
-function logout() {
-  if (!confirm('¿Cerrar sesión del panel? 🌿')) return;
-  localStorage.removeItem('naty_token');
-  window.location.href = '/admin/login';
-}
-
 function AdminLayout({ tab, count, children }) {
   const [brand, setBrand] = useState('/logo.jpg');
+  const { confirmDialog } = useNotice();
   useEffect(() => {
     let alive = true;
     api.get('/api/config/public').then((c) => alive && c?.logo && setBrand(c.logo)).catch(() => {});
@@ -194,6 +224,14 @@ function AdminLayout({ tab, count, children }) {
     window.addEventListener('focus', sync);
     return () => { alive = false; window.removeEventListener('focus', sync); };
   }, [tab]);
+  const doLogout = async () => {
+    const ok = await confirmDialog('Se cerrará tu sesión del panel. Podrás entrar de nuevo cuando quieras 🌿', {
+      title: '¿Cerrar sesión?', okLabel: 'Sí, salir'
+    });
+    if (!ok) return;
+    localStorage.removeItem('naty_token');
+    window.location.href = '/admin/login';
+  };
   return (
     <main className="container admin-page">
       <div className="admin-topbar">
@@ -203,7 +241,7 @@ function AdminLayout({ tab, count, children }) {
         </Link>
         <div className="admin-top-actions">
           <Link className="btn btn-ghost btn-small" to="/">← Ver tienda</Link>
-          <button className="btn btn-danger btn-small" onClick={logout}>Salir ⎋</button>
+          <button className="btn btn-danger btn-small" onClick={doLogout}>Salir ⎋</button>
         </div>
       </div>
       <SectionPill tab={tab} count={count} />
@@ -218,6 +256,7 @@ function AdminLayout({ tab, count, children }) {
 export function Admin() {
   const [params] = useSearchParams();
   const tab = params.get('tab') || 'dashboard';
+  const { toast, confirmDialog } = useNotice();
   const [rows, load] = useCrud(tab === 'dashboard' || tab === 'settings' || tab === 'orders' ? 'products' : tab);
   const [form, setForm] = useState({});
   const [editing, setEditing] = useState(null);
@@ -225,6 +264,7 @@ export function Admin() {
   const [settings, setSettings] = useState(null);
   const [allCats, setAllCats] = useState([]);
   const [filter, setFilter] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
   useEffect(() => {
     if (tab === 'orders') api.get('/api/orders').then(setOrders).catch(() => {});
     if (tab === 'settings') api.get('/api/config').then(setSettings).catch(() => {});
@@ -232,7 +272,7 @@ export function Admin() {
   }, [tab]);
   // Al cambiar de pestaña se limpia el formulario y el filtro para no
   // arrastrar datos de otra sección (no afecta lo ya guardado).
-  useEffect(() => { setForm({}); setEditing(null); setFilter(''); }, [tab]);
+  useEffect(() => { setForm({}); setEditing(null); setFilter(''); setModalOpen(false); }, [tab]);
 
   const visible = rows.filter((r) => {
     const q = filter.trim().toLowerCase();
@@ -240,21 +280,29 @@ export function Admin() {
     return [r.name, r.title, r.author, r.content, r.url, r.coupon_code, r.description, r.subtitle]
       .filter(Boolean).join(' ').toLowerCase().includes(q);
   });
-  const startEdit = (r) => { setEditing(r.id); setForm(r); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const openNew = () => { setForm({}); setEditing(null); setModalOpen(true); };
+  const startEdit = (r) => { setEditing(r.id); setForm(r); setModalOpen(true); };
+  const closeModal = () => { setModalOpen(false); setEditing(null); setForm({}); };
 
   const save = async (e) => {
     e.preventDefault();
     try {
-      if (tab === 'settings') { await api.put('/api/config', settings); alert('Ajustes guardados 🌿'); return; }
+      if (tab === 'settings') { await api.put('/api/config', settings); toast('Ajustes guardados 🌿', 'ok'); return; }
       if (editing) await api.put(`/api/${tab}/${editing}`, form);
       else await api.post(`/api/${tab}`, form);
-      setForm({}); setEditing(null); load();
-      alert('Guardado con éxito ✨');
-    } catch (err) { alert('Revisa los campos: ' + err.message); }
+      setForm({}); setEditing(null); setModalOpen(false); load();
+      toast('Guardado con éxito ✨', 'ok');
+    } catch (err) { toast('Revisa los campos: ' + (err.message || 'error desconocido'), 'error'); }
   };
-  const del = async (id) => {
-    if (!confirm('¿Eliminar? Respira antes de confirmar 🍃')) return;
-    await api.del(`/api/${tab}/${id}`); load();
+  const del = async (id, label) => {
+    const ok = await confirmDialog(`Se eliminará “${label || 'este ítem'}” de tu tienda. Esta acción no se puede deshacer 🍂`, {
+      title: '¿Eliminar?', okLabel: 'Sí, eliminar', danger: true
+    });
+    if (!ok) return;
+    try {
+      await api.del(`/api/${tab}/${id}`); load();
+      toast('Eliminado 🍂', 'ok');
+    } catch (err) { toast('No se pudo eliminar: ' + (err.message || ''), 'error'); }
   };
 
   const uploadLogo = async (e) => {
@@ -263,7 +311,8 @@ export function Admin() {
     try {
       const r = await api.upload(file);
       setSettings({ ...settings, logo: r.url });
-    } catch { alert('No se pudo subir el logo. Intenta con una imagen más liviana 🍃'); }
+      toast('Logo actualizado 🌸', 'ok');
+    } catch { toast('No se pudo subir el logo. Intenta con una imagen más liviana 🍃', 'error'); }
   };
 
   if (tab === 'settings') return (
@@ -341,12 +390,19 @@ export function Admin() {
       </div>
     </AdminLayout>);
 
+  const NEW_LABEL = { products: '＋ Nuevo producto', categories: '＋ Nueva categoría', banners: '＋ Nuevo banner', offers: '＋ Nueva oferta', videos: '＋ Nuevo video', testimonials: '＋ Nuevo testimonio' };
+
   return (
     <AdminLayout tab={tab} count={visible.length}>
       <div>
-        <h1 style={{ textTransform: 'capitalize' }}>{tab} ✨</h1>
-        <form onSubmit={save} className="form-grid">
-          <AdminSection title={editing ? 'Editando ítem' : 'Nuevo ítem'} emoji={editing ? '✏️' : '＋'} open>
+        <div className="admin-list-head">
+          <h1 style={{ textTransform: 'capitalize', margin: 0 }}>{tab} ✨</h1>
+          <button className="btn btn-verde btn-small" onClick={openNew}>{NEW_LABEL[tab] || '＋ Nuevo'}</button>
+        </div>
+        {modalOpen && (
+        <AdminModal title={editing ? `Editar — ${rowLabel(form)}` : (NEW_LABEL[tab] || 'Nuevo')} onClose={closeModal}>
+        <form onSubmit={save} className="form-grid form-in-modal">
+          <AdminSection title="Datos" emoji="📋" open>
             {(tab === 'products' || tab === 'categories') && (
               <label>Nombre*<input className="input" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>)}
             {(tab === 'banners' || tab === 'offers' || tab === 'videos') && (
@@ -391,7 +447,7 @@ export function Admin() {
           {(tab === 'products' || tab === 'categories' || tab === 'banners' || tab === 'videos') && (
             <AdminSection title="Multimedia" emoji="🖼️">
               {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
-                <label>Foto<input type="file" accept="image/*" onChange={(e) => handleImage(e, setForm, form)} />{form.image && <img src={form.image} alt="" style={{ width: 120, borderRadius: 12, marginTop: 6 }} />}</label>)}
+                <label>Foto<input type="file" accept="image/*" onChange={(e) => handleImage(e, setForm, form, toast)} />{form.image && <img src={form.image} alt="" style={{ width: 120, borderRadius: 12, marginTop: 6 }} />}</label>)}
               {tab === 'banners' && (<>
                 <label>Texto del botón<input className="input" value={form.cta_text || ''} onChange={(e) => setForm({ ...form, cta_text: e.target.value })} placeholder="Ver tienda" /></label>
                 <label>Enlace del botón<input className="input" value={form.cta_link || ''} onChange={(e) => setForm({ ...form, cta_link: e.target.value })} placeholder="/tienda" /></label>
@@ -411,9 +467,11 @@ export function Admin() {
           )}
           <div className="admin-savebar">
             <button className="btn btn-verde">{editing ? 'Actualizar 🌿' : 'Publicar ✨'}</button>
-            {editing && <button type="button" className="btn btn-ghost" onClick={() => { setEditing(null); setForm({}); }}>Cancelar</button>}
+            <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
           </div>
         </form>
+        </AdminModal>
+        )}
         <AdminSearch value={filter} onChange={setFilter} total={visible.length} />
         <div className="table-wrap"><table className="table admin-table" style={{ marginTop: '1rem' }}>
           <thead><tr><th>Ítem</th><th style={{ width: 110 }}>Acciones</th></tr></thead>
@@ -421,7 +479,7 @@ export function Admin() {
             <tr key={r.id}><td>{rowLabel(r)}</td>
               <td><div className="row-actions">
                 <button className="icon-btn" title="Editar" onClick={() => startEdit(r)}>✏️</button>
-                <button className="icon-btn danger" title="Eliminar" onClick={() => del(r.id)}>🗑️</button>
+                <button className="icon-btn danger" title="Eliminar" onClick={() => del(r.id, rowLabel(r))}>🗑️</button>
               </div></td></tr>))}
           </tbody>
         </table></div>

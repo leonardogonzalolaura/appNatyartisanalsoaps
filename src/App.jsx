@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './styles/calma.css';
 import { CartProvider } from './store/cart.jsx';
+import { NoticeProvider } from './store/notice.jsx';
 import { Header, Footer, CartToast, MiniCartBar, RevealManager } from './components/ui.jsx';
 import { Home } from './pages/Home.jsx';
 import { Shop, ProductDetail, Offers, Videos, Static, Cart } from './pages/Shop.jsx';
@@ -58,8 +59,10 @@ export default function App() {
   return (
     <CartProvider>
       <BrowserRouter>
-        <RevealManager />
-        <Shell />
+        <NoticeProvider>
+          <RevealManager />
+          <Shell />
+        </NoticeProvider>
       </BrowserRouter>
     </CartProvider>
   );

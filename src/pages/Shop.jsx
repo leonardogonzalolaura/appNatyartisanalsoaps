@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useReveal, ProductCard, toEmbed } from '../components/ui.jsx';
 import { useCart } from '../store/cart.jsx';
+import { useNotice } from '../store/notice.jsx';
 import { formatPrice } from '../utils/currency.js';
 import { FALLBACK_PRODUCTS, FALLBACK_CATEGORIES, FALLBACK_OFFERS, FALLBACK_VIDEOS } from '../data/fallback.js';
 
@@ -243,6 +244,7 @@ export function Static({ kind, config }) {
 
 export function Cart({ config }) {
   const { items, setQty, remove, total, clear } = useCart();
+  const { alertDialog } = useNotice();
   const [coupon, setCoupon] = useState('');
   const [name, setName] = useState('');
   useReveal([items.length]);
@@ -253,7 +255,7 @@ export function Cart({ config }) {
     clear();
     const wa = config?.whatsapp ? `https://wa.me/${config.whatsapp}?text=${msg}` : null;
     if (wa) window.open(wa, '_blank');
-    else alert('Pedido guardado. Configura tu WhatsApp en /admin → Ajustes para enviarlo 🌿');
+    else alertDialog('Tu pedido quedó guardado, pero la tienda aún no tiene WhatsApp configurado. Escríbenos por redes mientras lo activamos 🌿', { title: 'Pedido guardado 🧺' });
   };
   return (
     <main className="container reveal">

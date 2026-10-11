@@ -3,17 +3,25 @@ import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { brandLogo } from '../components/ui.jsx';
 
-const TABS = [
-  ['dashboard', '🏠 Inicio'],
-  ['banners', '🖼️ Banners'],
-  ['categories', '🌼 Categorías'],
-  ['products', '🧼 Productos'],
-  ['offers', '✨ Ofertas'],
-  ['videos', '🎥 Videos'],
-  ['testimonials', '💌 Testimonios'],
-  ['orders', '🛒 Pedidos WA'],
-  ['settings', '⚙️ Ajustes/Redes']
+const NAV_GROUPS = [
+  { id: 'contenido', label: 'Contenido', emoji: '🧺', items: [
+    { key: 'products', label: 'Productos', emoji: '🧼', desc: 'Lo que vendes' },
+    { key: 'banners', label: 'Banners', emoji: '🖼️', desc: 'Hero del inicio' },
+    { key: 'categories', label: 'Categorías', emoji: '🌼', desc: 'Agrupan tu tienda' },
+    { key: 'videos', label: 'Videos', emoji: '🎥', desc: 'Rituales y redes' },
+    { key: 'testimonials', label: 'Testimonios', emoji: '💌', desc: 'Lo que dicen' },
+  ]},
+  { id: 'ventas', label: 'Ventas', emoji: '💰', items: [
+    { key: 'offers', label: 'Ofertas', emoji: '✨', desc: 'Promos y cupones' },
+    { key: 'orders', label: 'Pedidos WA', emoji: '🛒', desc: 'Pedidos WhatsApp' },
+  ]},
+  { id: 'sistema', label: 'Sistema', emoji: '⚙️', items: [
+    { key: 'settings', label: 'Ajustes', emoji: '⚙️', desc: 'Logo, moneda, redes' },
+  ]},
 ];
+const NAV_FLAT = Object.fromEntries(
+  NAV_GROUPS.flatMap((g) => g.items.map((i) => [i.key, { ...i, group: g.label, groupEmoji: g.emoji }]))
+);
 
 export function AdminLogin() {
   const [email, setEmail] = useState('admin@naty.pe');
@@ -142,17 +150,11 @@ function AdminSearch({ value, onChange, total }) {
   );
 }
 
-const TAB_TITLES = {
-  dashboard: '🏠 Inicio',
-  banners: '🖼️ Banners',
-  categories: '🌼 Categorías',
-  products: '🧼 Productos',
-  offers: '✨ Ofertas',
-  videos: '🎥 Videos',
-  testimonials: '💌 Testimonios',
-  orders: '🛒 Pedidos WhatsApp',
-  settings: '⚙️ Ajustes y redes'
-};
+function sectionSubtitle(tab) {
+  if (tab === 'dashboard') return '🏠 Inicio';
+  const s = NAV_FLAT[tab];
+  return s ? `${s.emoji} ${s.label} — ${s.desc}` : '';
+}
 
 function logout() {
   if (!confirm('¿Cerrar sesión del panel? 🌿')) return;
@@ -174,7 +176,7 @@ function AdminLayout({ tab, children }) {
       <div className="admin-topbar">
         <Link to="/admin?tab=dashboard" className="admin-brand">
           <img src={brand} alt="Naty" />
-          <div><strong>Panel Naty 🌿</strong><small>{TAB_TITLES[tab] || ''}</small></div>
+          <div><strong>Panel Naty 🌿</strong><small>{sectionSubtitle(tab)}</small></div>
         </Link>
         <div className="admin-top-actions">
           <Link className="btn btn-ghost btn-small" to="/">← Ver tienda</Link>
@@ -406,10 +408,41 @@ export function Admin() {
 }
 
 function Sidebar({ tab }) {
+  const [counts, setCounts] = useState({});
+  useEffect(() => {
+    let alive = true;
+    const jobs = [
+      ['products', '/api/products'], ['banners', '/api/banners'],
+      ['categories', '/api/categories'], ['offers', '/api/offers'],
+      ['videos', '/api/videos'], ['testimonials', '/api/testimonials'],
+      ['orders', '/api/orders']
+    ];
+    Promise.all(jobs.map(([k, p]) => api.get(p)
+      .then((r) => [k, Array.isArray(r) ? r.length : null])
+      .catch(() => [k, null])))
+      .then((es) => alive && setCounts(Object.fromEntries(es)));
+    return () => { alive = false; };
+  }, []);
   return (
     <aside className="sidebar">
-      <small className="sidebar-label">Gestionar</small>
-      {TABS.map(([k, label]) => <Link key={k} to={`/admin?tab=${k}`} className={tab === k ? 'active' : ''}>{label}</Link>)}
+      <Link to="/admin?tab=dashboard" className={`side-home${tab === 'dashboard' ? ' active' : ''}`}>
+        <span className="side-emoji" aria-hidden>🏠</span>
+        <span><strong>Inicio</strong><small>Resumen del panel</small></span>
+      </Link>
+      {NAV_GROUPS.map((g) => (
+        <section key={g.id} className="side-group" aria-label={g.label}>
+          <small className="side-group-label">{g.emoji} {g.label}</small>
+          <div className="side-items">
+            {g.items.map((it) => (
+              <Link key={it.key} to={`/admin?tab=${it.key}`} className={`side-item${tab === it.key ? ' active' : ''}`}>
+                <span className="side-emoji" aria-hidden>{it.emoji}</span>
+                <span className="side-text"><strong>{it.label}</strong><small>{it.desc}</small></span>
+                {counts[it.key] != null && <span className="side-count">{counts[it.key]}</span>}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
     </aside>
   );
 }

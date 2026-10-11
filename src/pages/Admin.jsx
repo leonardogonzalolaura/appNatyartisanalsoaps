@@ -71,6 +71,77 @@ function prettyItems(raw) {
   } catch { return raw || '—'; }
 }
 
+// Sección colapsable del formulario. En escritorio el CSS la muestra
+// siempre abierta e idéntica a antes; en móvil colapsa por grupos.
+function AdminSection({ title, emoji, open, children }) {
+  return (
+    <details className="admin-section" open={open}>
+      <summary className="admin-summary"><span className="emoji" aria-hidden>{emoji}</span> {title} <span className="admin-caret" aria-hidden>▾</span></summary>
+      <div className="admin-section-body">{children}</div>
+    </details>
+  );
+}
+
+function rowLabel(r) {
+  return r.name || r.title || (r.author ? `${r.author} — ${(r.content || '').slice(0, 60)}` : r.url) || 'Ítem';
+}
+
+function stockBadge(stock) {
+  const s = Number(stock ?? 0);
+  if (s <= 0) return <span className="badge badge-off">Agotado</span>;
+  if (s <= 3) return <span className="badge badge-oferta">¡Solo {s}!</span>;
+  return <span className="badge badge-ok">Stock {s}</span>;
+}
+
+// Tarjetas para móvil: misma data y mismos handlers que la tabla.
+// En escritorio el CSS las oculta y se usa la tabla de siempre.
+function AdminCards({ tab, rows, onEdit, onDel }) {
+  return (
+    <div className="admin-cards">
+      {rows.map((r) => (
+        <article key={r.id} className="card admin-card">
+          {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
+            <img src={r.image || '/logo.jpg'} alt="" loading="lazy" />
+          )}
+          <div className="admin-card-info">
+            <strong>{rowLabel(r)}</strong>
+            <div className="admin-card-meta">
+              {tab === 'products' && (<>
+                <span className="price-sm">${Number(r.offer_price || r.price || 0).toLocaleString('es-CO')}</span>
+                {stockBadge(r.stock)}
+                {!!r.featured && <span className="badge">⭐ Destacado</span>}
+              </>)}
+              {tab === 'offers' && (<>
+                <span className="badge badge-oferta">{r.type || 'cupon'}</span>
+                {r.coupon_code && <code>{r.coupon_code}</code>}
+              </>)}
+              {tab === 'testimonials' && <span className="badge">{'★'.repeat(Math.min(5, Number(r.rating) || 5))}</span>}
+              {(tab === 'videos' || tab === 'categories' || tab === 'banners') && r.description && (
+                <small>{String(r.description).slice(0, 80)}</small>)}
+              {tab === 'videos' && r.url && <small>{String(r.url).slice(0, 48)}…</small>}
+              {tab === 'banners' && r.subtitle && <small>{String(r.subtitle).slice(0, 80)}</small>}
+            </div>
+          </div>
+          <div className="admin-card-actions">
+            <button className="icon-btn" title="Editar" onClick={() => onEdit(r)}>✏️</button>
+            <button className="icon-btn danger" title="Eliminar" onClick={() => onDel(r.id)}>🗑️</button>
+          </div>
+        </article>
+      ))}
+      {rows.length === 0 && <p className="admin-hint">Sin resultados 🍃</p>}
+    </div>
+  );
+}
+
+function AdminSearch({ value, onChange, total }) {
+  return (
+    <div className="admin-search">
+      <input className="input" placeholder="🔍 Buscar…" value={value} onChange={(e) => onChange(e.target.value)} />
+      <small>{total} ítems</small>
+    </div>
+  );
+}
+
 const TAB_TITLES = {
   dashboard: '🏠 Inicio',
   banners: '🖼️ Banners',
@@ -127,11 +198,23 @@ export function Admin() {
   const [orders, setOrders] = useState([]);
   const [settings, setSettings] = useState(null);
   const [allCats, setAllCats] = useState([]);
+  const [filter, setFilter] = useState('');
   useEffect(() => {
     if (tab === 'orders') api.get('/api/orders').then(setOrders).catch(() => {});
     if (tab === 'settings') api.get('/api/config').then(setSettings).catch(() => {});
     if (tab === 'products') api.get('/api/categories').then(setAllCats).catch(() => {});
   }, [tab]);
+  // Al cambiar de pestaña se limpia el formulario y el filtro para no
+  // arrastrar datos de otra sección (no afecta lo ya guardado).
+  useEffect(() => { setForm({}); setEditing(null); setFilter(''); }, [tab]);
+
+  const visible = rows.filter((r) => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return true;
+    return [r.name, r.title, r.author, r.content, r.url, r.coupon_code, r.description, r.subtitle]
+      .filter(Boolean).join(' ').toLowerCase().includes(q);
+  });
+  const startEdit = (r) => { setEditing(r.id); setForm(r); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   const save = async (e) => {
     e.preventDefault();
@@ -162,23 +245,35 @@ export function Admin() {
       <div><h1>⚙️ Ajustes y redes</h1>
         {settings && (
           <form onSubmit={save} className="form-grid">
-            <label>Logo de marca
-              <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '.3rem' }}>
-                <img src={settings.logo || '/logo.jpg'} alt="Logo actual" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '1px solid #eee' }} />
-                <div style={{ display: 'grid', gap: '.4rem' }}>
-                  <input type="file" accept="image/*" onChange={uploadLogo} />
-                  {settings.logo && settings.logo !== '/logo.jpg' && (
-                    <button type="button" className="btn btn-ghost btn-small" onClick={() => setSettings({ ...settings, logo: '/logo.jpg' })}>Volver al logo original</button>
-                  )}
+            <AdminSection title="Marca" emoji="🖼️" open>
+              <label>Logo de marca
+                <div style={{ display: 'flex', gap: '.8rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '.3rem' }}>
+                  <img src={settings.logo || '/logo.jpg'} alt="Logo actual" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '1px solid #eee' }} />
+                  <div style={{ display: 'grid', gap: '.4rem' }}>
+                    <input type="file" accept="image/*" onChange={uploadLogo} />
+                    {settings.logo && settings.logo !== '/logo.jpg' && (
+                      <button type="button" className="btn btn-ghost btn-small" onClick={() => setSettings({ ...settings, logo: '/logo.jpg' })}>Volver al logo original</button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </label>
-            {[['whatsapp', 'WhatsApp (solo números, ej: 573001234567)'], ['instagram', 'Instagram URL'], ['tiktok', 'TikTok URL'], ['facebook', 'Facebook URL'], ['announcement_text', 'Texto barra superior'], ['about_text', 'Texto Nosotros'], ['schedule', 'Horario'], ['address', 'Dirección'], ['currency_code', 'Moneda (ej: COP, PEN, MXN, USD)'], ['currency_symbol', 'Símbolo moneda (ej: $, S/)']].map(([k, label]) => (
-              <label key={k}>{label}<input className="input" value={settings[k] || ''} onChange={(e) => setSettings({ ...settings, [k]: e.target.value })} placeholder={k === 'currency_code' ? 'COP' : k === 'currency_symbol' ? '$' : ''} /></label>
-            ))}
-            <small style={{ opacity: .7 }}>Por defecto: COP $ pesos colombianos. Si vendes en soles usa PEN y S/.</small>
-            <label><input type="checkbox" checked={settings.announcement_enabled === 1} onChange={(e) => setSettings({ ...settings, announcement_enabled: e.target.checked ? 1 : 0 })} /> Mostrar barra anuncio</label>
-            <button className="btn btn-verde">Guardar 🌿</button>
+              </label>
+            </AdminSection>
+            <AdminSection title="Contacto y redes" emoji="💬">
+              {[['whatsapp', 'WhatsApp (solo números, ej: 573001234567)', ''], ['schedule', 'Horario', ''], ['address', 'Dirección', ''], ['instagram', 'Instagram URL', ''], ['tiktok', 'TikTok URL', ''], ['facebook', 'Facebook URL', '']].map(([k, label, ph]) => (
+                <label key={k}>{label}<input className="input" value={settings[k] || ''} onChange={(e) => setSettings({ ...settings, [k]: e.target.value })} placeholder={ph} /></label>
+              ))}
+            </AdminSection>
+            <AdminSection title="Textos y moneda" emoji="📝">
+              <label>Texto barra superior<input className="input" value={settings.announcement_text || ''} onChange={(e) => setSettings({ ...settings, announcement_text: e.target.value })} /></label>
+              <label><input type="checkbox" checked={settings.announcement_enabled === 1} onChange={(e) => setSettings({ ...settings, announcement_enabled: e.target.checked ? 1 : 0 })} /> Mostrar barra anuncio</label>
+              <label>Texto Nosotros<textarea className="textarea" value={settings.about_text || ''} onChange={(e) => setSettings({ ...settings, about_text: e.target.value })} /></label>
+              <label>Moneda (ej: COP, PEN, MXN, USD)<input className="input" value={settings.currency_code || ''} onChange={(e) => setSettings({ ...settings, currency_code: e.target.value })} placeholder="COP" /></label>
+              <label>Símbolo moneda (ej: $, S/)<input className="input" value={settings.currency_symbol || ''} onChange={(e) => setSettings({ ...settings, currency_symbol: e.target.value })} placeholder="$" /></label>
+              <small style={{ opacity: .7 }}>Por defecto: COP $ pesos colombianos. Si vendes en soles usa PEN y S/.</small>
+            </AdminSection>
+            <div className="admin-savebar">
+              <button className="btn btn-verde">Guardar 🌿</button>
+            </div>
           </form>)}
       </div>
     </AdminLayout>);
@@ -186,9 +281,23 @@ export function Admin() {
   if (tab === 'orders') return (
     <AdminLayout tab={tab}>
       <div><h1>🛒 Pedidos por WhatsApp</h1>
+        <AdminSearch value={filter} onChange={setFilter} total={orders.length} />
         <div className="table-wrap"><table className="table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th><th>Detalle</th></tr></thead>
-          <tbody>{orders.map((o) => <tr key={o.id}><td>{o.created_at}</td><td>{o.customer_name}</td><td>$ {o.total}</td><td>{prettyItems(o.items)}</td></tr>)}</tbody>
+          <tbody>{orders.filter((o) => !filter.trim() || `${o.customer_name} ${o.items} ${o.total}`.toLowerCase().includes(filter.trim().toLowerCase())).map((o) => <tr key={o.id}><td>{o.created_at}</td><td>{o.customer_name}</td><td>$ {o.total}</td><td>{prettyItems(o.items)}</td></tr>)}</tbody>
         </table></div>
+        <div className="admin-cards">
+          {orders.filter((o) => !filter.trim() || `${o.customer_name} ${o.items} ${o.total}`.toLowerCase().includes(filter.trim().toLowerCase())).map((o) => (
+            <article key={o.id} className="card admin-card">
+              <div className="admin-card-info">
+                <strong>{o.customer_name || 'Cliente'}</strong>
+                <div className="admin-card-meta">
+                  <span className="price-sm">$ {o.total}</span>
+                  <small>{o.created_at}</small>
+                  <small>{prettyItems(o.items)}</small>
+                </div>
+              </div>
+            </article>))}
+        </div>
         {orders.length === 0 && <p className="admin-hint">Aún no hay pedidos. Cuando alguien finalice por WhatsApp aparecerán aquí 🍃</p>}
       </div>
     </AdminLayout>);
@@ -211,65 +320,86 @@ export function Admin() {
       <div>
         <h1 style={{ textTransform: 'capitalize' }}>{tab} ✨</h1>
         <form onSubmit={save} className="form-grid">
-          {(tab === 'products' || tab === 'categories') && (
-            <label>Nombre*<input className="input" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>)}
-          {(tab === 'banners' || tab === 'offers' || tab === 'videos') && (
-            <label>Título*<input className="input" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></label>)}
+          <AdminSection title={editing ? 'Editando ítem' : 'Nuevo ítem'} emoji={editing ? '✏️' : '＋'} open>
+            {(tab === 'products' || tab === 'categories') && (
+              <label>Nombre*<input className="input" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>)}
+            {(tab === 'banners' || tab === 'offers' || tab === 'videos') && (
+              <label>Título*<input className="input" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></label>)}
+            {tab === 'testimonials' && (
+              <label>Autor / cliente*<input className="input" value={form.author || ''} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="Ej: María 🌸" required /></label>)}
+            {tab === 'products' && (<>
+              <label>Categoría<select className="select" value={form.category_id || ''} onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}>
+                <option value="">Sin categoría</option>
+                {allCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select></label>
+              <label>Precio (en tu moneda administrable)*<input className="input" type="number" inputMode="decimal" step="0.01" value={form.price || ''} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></label>
+              <label>Precio oferta (opcional)<input className="input" type="number" inputMode="decimal" step="0.01" value={form.offer_price || ''} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} /></label>
+              <label>Stock<input className="input" type="number" inputMode="numeric" value={form.stock || ''} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></label>
+            </>)}
+            {tab === 'offers' && (
+              <label>Tipo<select className="select" value={form.type || 'cupon'} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                <option value="cupon">Cupón</option>
+                <option value="porcentaje">Porcentaje</option>
+                <option value="pack_3x2">Pack 3x2</option>
+              </select></label>)}
+          </AdminSection>
+          {(tab === 'products' || tab === 'categories' || tab === 'banners' || tab === 'offers' || tab === 'testimonials') && (
+            <AdminSection title="Detalle" emoji="📝">
+              {tab === 'products' && (<>
+                <label>Ingredientes<textarea className="textarea" value={form.ingredients || ''} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} placeholder="avena, lavanda, aceite de oliva..." /></label>
+                <label>Beneficios<textarea className="textarea" value={form.benefits || ''} onChange={(e) => setForm({ ...form, benefits: e.target.value })} /></label>
+                <label>Modo de uso<textarea className="textarea" value={form.how_to_use || ''} onChange={(e) => setForm({ ...form, how_to_use: e.target.value })} placeholder="Humedece, enjabona con calma, enjuaga..." /></label>
+              </>)}
+              {tab === 'categories' && (
+                <label>Descripción<textarea className="textarea" value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Cuidado diario con aceites nobles..." /></label>)}
+              {tab === 'banners' && (
+                <label>Subtítulo<textarea className="textarea" value={form.subtitle || ''} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} placeholder="Lavanda, avena y manzanilla..." /></label>)}
+              {tab === 'offers' && (<>
+                <label>Descripción<textarea className="textarea" value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="En tu primera canasta..." /></label>
+                <label>Cupón<input className="input" value={form.coupon_code || ''} onChange={(e) => setForm({ ...form, coupon_code: e.target.value })} placeholder="NATY10 (opcional)" /></label>
+              </>)}
+              {tab === 'testimonials' && (
+                <label>Testimonio*<textarea className="textarea" value={form.content || ''} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Mi piel respira paz desde que uso Naty..." required /></label>)}
+            </AdminSection>
+          )}
+          {(tab === 'products' || tab === 'categories' || tab === 'banners' || tab === 'videos') && (
+            <AdminSection title="Multimedia" emoji="🖼️">
+              {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
+                <label>Foto<input type="file" accept="image/*" onChange={(e) => handleImage(e, setForm, form)} />{form.image && <img src={form.image} alt="" style={{ width: 120, borderRadius: 12, marginTop: 6 }} />}</label>)}
+              {tab === 'banners' && (<>
+                <label>Texto del botón<input className="input" value={form.cta_text || ''} onChange={(e) => setForm({ ...form, cta_text: e.target.value })} placeholder="Ver tienda" /></label>
+                <label>Enlace del botón<input className="input" value={form.cta_link || ''} onChange={(e) => setForm({ ...form, cta_link: e.target.value })} placeholder="/tienda" /></label>
+              </>)}
+              {tab === 'products' && (
+                <label>Video (URL YouTube/TikTok, opcional)<input className="input" value={form.video_url || ''} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://..." /></label>)}
+              {tab === 'videos' && (
+                <label>URL del video*<input className="input" value={form.url || ''} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="Pega link YouTube/TikTok..." required /></label>)}
+              {tab === 'products' && (
+                <label><input type="checkbox" checked={!!form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked ? 1 : 0 })} /> Destacado en inicio</label>)}
+            </AdminSection>
+          )}
           {tab === 'testimonials' && (
-            <label>Autor / cliente*<input className="input" value={form.author || ''} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="Ej: María 🌸" required /></label>)}
-          {(tab === 'products' || tab === 'categories' || tab === 'banners') && (
-            <label>Foto<input type="file" accept="image/*" onChange={(e) => handleImage(e, setForm, form)} />{form.image && <img src={form.image} alt="" style={{ width: 120, borderRadius: 12, marginTop: 6 }} />}</label>)}
-          {tab === 'products' && (<>
-            <label>Categoría<select className="select" value={form.category_id || ''} onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}>
-              <option value="">Sin categoría</option>
-              {allCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select></label>
-            <label>Precio (en tu moneda administrable)*<input className="input" type="number" step="0.01" value={form.price || ''} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></label>
-            <label>Precio oferta (opcional)<input className="input" type="number" step="0.01" value={form.offer_price || ''} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} /></label>
-            <label>Stock<input className="input" type="number" value={form.stock || ''} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></label>
-            <label>Ingredientes<textarea className="textarea" value={form.ingredients || ''} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} placeholder="avena, lavanda, aceite de oliva..." /></label>
-            <label>Beneficios<textarea className="textarea" value={form.benefits || ''} onChange={(e) => setForm({ ...form, benefits: e.target.value })} /></label>
-            <label>Modo de uso<textarea className="textarea" value={form.how_to_use || ''} onChange={(e) => setForm({ ...form, how_to_use: e.target.value })} placeholder="Humedece, enjabona con calma, enjuaga..." /></label>
-            <label>Video (URL YouTube/TikTok, opcional)<input className="input" value={form.video_url || ''} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://..." /></label>
-            <label><input type="checkbox" checked={!!form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked ? 1 : 0 })} /> Destacado en inicio</label>
-          </>)}
-          {tab === 'categories' && (
-            <label>Descripción<textarea className="textarea" value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Cuidado diario con aceites nobles..." /></label>)}
-          {tab === 'banners' && (<>
-            <label>Subtítulo<textarea className="textarea" value={form.subtitle || ''} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} placeholder="Lavanda, avena y manzanilla..." /></label>
-            <label>Texto del botón<input className="input" value={form.cta_text || ''} onChange={(e) => setForm({ ...form, cta_text: e.target.value })} placeholder="Ver tienda" /></label>
-            <label>Enlace del botón<input className="input" value={form.cta_link || ''} onChange={(e) => setForm({ ...form, cta_link: e.target.value })} placeholder="/tienda" /></label>
-          </>)}
-          {tab === 'offers' && (<>
-            <label>Descripción<textarea className="textarea" value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="En tu primera canasta..." /></label>
-            <label>Tipo<select className="select" value={form.type || 'cupon'} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-              <option value="cupon">Cupón</option>
-              <option value="porcentaje">Porcentaje</option>
-              <option value="pack_3x2">Pack 3x2</option>
-            </select></label>
-            <label>Cupón<input className="input" value={form.coupon_code || ''} onChange={(e) => setForm({ ...form, coupon_code: e.target.value })} placeholder="NATY10 (opcional)" /></label>
-          </>)}
-          {tab === 'videos' && (
-            <label>URL del video*<input className="input" value={form.url || ''} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="Pega link YouTube/TikTok..." required /></label>)}
-          {tab === 'testimonials' && (<>
-            <label>Testimonio*<textarea className="textarea" value={form.content || ''} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Mi piel respira paz desde que uso Naty..." required /></label>
-            <label>Estrellas (1-5)<input className="input" type="number" min="1" max="5" value={form.rating || 5} onChange={(e) => setForm({ ...form, rating: e.target.value })} /></label>
-          </>)}
-          <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+            <AdminSection title="Calificación" emoji="⭐">
+              <label>Estrellas (1-5)<input className="input" type="number" inputMode="numeric" min="1" max="5" value={form.rating || 5} onChange={(e) => setForm({ ...form, rating: e.target.value })} /></label>
+            </AdminSection>
+          )}
+          <div className="admin-savebar">
             <button className="btn btn-verde">{editing ? 'Actualizar 🌿' : 'Publicar ✨'}</button>
             {editing && <button type="button" className="btn btn-ghost" onClick={() => { setEditing(null); setForm({}); }}>Cancelar</button>}
           </div>
         </form>
+        <AdminSearch value={filter} onChange={setFilter} total={visible.length} />
         <div className="table-wrap"><table className="table admin-table" style={{ marginTop: '1rem' }}>
           <thead><tr><th>Ítem</th><th style={{ width: 110 }}>Acciones</th></tr></thead>
-          <tbody>{rows.map((r) => (
-            <tr key={r.id}><td>{r.name || r.title || (r.author ? `${r.author} — ${(r.content || '').slice(0, 60)}` : r.url)}</td>
+          <tbody>{visible.map((r) => (
+            <tr key={r.id}><td>{rowLabel(r)}</td>
               <td><div className="row-actions">
-                <button className="icon-btn" title="Editar" onClick={() => { setEditing(r.id); setForm(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>✏️</button>
+                <button className="icon-btn" title="Editar" onClick={() => startEdit(r)}>✏️</button>
                 <button className="icon-btn danger" title="Eliminar" onClick={() => del(r.id)}>🗑️</button>
               </div></td></tr>))}
           </tbody>
         </table></div>
+        <AdminCards tab={tab} rows={visible} onEdit={startEdit} onDel={del} />
       </div>
     </AdminLayout>
   );

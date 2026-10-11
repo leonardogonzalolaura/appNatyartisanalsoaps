@@ -211,6 +211,37 @@ body.has-minicart .wa-float { bottom: calc(env(safe-area-inset-bottom, 0px) + 4.
 .table th, .table td { padding: .7rem .8rem; border-bottom: 1px solid #eee; text-align: left; font-size: .92rem; }
 .input, .textarea, .select { width: 100%; padding: .7rem .9rem; border-radius: .9rem; border: 1px solid #ddd; background: #fff; font-size: 1rem; }
 .form-grid { display: grid; gap: .9rem; max-width: 640px; background: #fff; padding: 1.2rem; border-radius: 1.2rem; box-shadow: var(--sombra); }
+/* Admin: secciones colapsables (móvil) — en escritorio se ven abiertas e iguales */
+.admin-section { border: 0; }
+.admin-summary { cursor: pointer; font-weight: 800; color: var(--verde); list-style: none; display: flex; align-items: center; gap: .5rem; background: #F6F1E4; border-radius: .9rem; padding: .7rem .9rem; }
+.admin-summary::-webkit-details-marker { display: none; }
+.admin-caret { margin-left: auto; transition: transform .25s ease; opacity: .6; }
+.admin-section[open] .admin-caret { transform: rotate(180deg); }
+.admin-section-body { display: grid; gap: .9rem; padding-top: .9rem; }
+.admin-savebar { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .4rem; }
+/* Admin: buscador */
+.admin-search { display: flex; gap: .7rem; align-items: center; margin: 1rem 0 .2rem; }
+.admin-search .input { max-width: 320px; }
+.admin-search small { opacity: .6; white-space: nowrap; }
+/* Admin: tarjetas (móvil) — ocultas en escritorio donde manda la tabla */
+.admin-cards { display: none; }
+.admin-card { padding: .8rem .9rem; display: flex; gap: .8rem; align-items: center; }
+.admin-card img { width: 58px; height: 58px; border-radius: .8rem; object-fit: cover; flex: none; }
+.admin-card-info { flex: 1; min-width: 0; display: grid; gap: .3rem; }
+.admin-card-meta { display: flex; gap: .45rem; align-items: center; flex-wrap: wrap; font-size: .85rem; }
+.admin-card-meta small { opacity: .65; }
+.admin-card-actions { display: grid; gap: .4rem; }
+.price-sm { font-weight: 900; color: var(--verde); }
+.badge-ok { background: #E3F3E7; color: #2c6b3f; }
+.badge-off { background: #F7E9E9; color: #a33; }
+/* File input legible */
+.form-grid input[type="file"] { font-size: .9rem; }
+@media (min-width: 821px) {
+  .admin-summary { display: none; }
+  details.admin-section:not([open]) > .admin-section-body { display: grid; }
+  .admin-cards { display: none !important; }
+  .admin-savebar { position: static; background: none; padding: 0; box-shadow: none; }
+}
 /* Responsive */
 @media (max-width: 1024px) { .container { max-width: 100%; } }
 @media (max-width: 820px) {
@@ -226,6 +257,12 @@ body.has-minicart .wa-float { bottom: calc(env(safe-area-inset-bottom, 0px) + 4.
   .hamburger { display: inline-block; }
   .nav-desktop { display: none; }
   .nav { flex-wrap: nowrap; }
+  /* Admin móvil: guardar siempre a la mano + objetivos táctiles */
+  .admin-savebar { position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + .8rem); z-index: 30; background: #fff; border-radius: 1.1rem; box-shadow: var(--sombra); padding: .7rem; margin-top: .8rem; }
+  .admin-savebar .btn { flex: 1; justify-content: center; }
+  .icon-btn { width: 44px; height: 44px; }
+  .form-grid input[type="file"] { background: #F6F1E4; border-radius: .9rem; padding: .8rem; width: 100%; }
+  .admin-search .input { max-width: none; }
 }
 @media (max-width: 560px) {
   .container { padding: 0 1rem; }
@@ -251,6 +288,13 @@ body.has-minicart .wa-float { bottom: calc(env(safe-area-inset-bottom, 0px) + 4.
   .footer-col h4 { font-size: .9rem; }
   .footer-bottom { justify-content: center; text-align: center; padding-bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)); }
   .minicart { font-size: .88rem; gap: .6rem; }
+  /* Admin móvil: tarjetas en vez de tabla ancha */
+  .admin-content .table-wrap { display: none; }
+  .admin-cards { display: grid; gap: .6rem; margin-top: .8rem; }
+  .admin-card-actions { grid-auto-flow: column; }
+  .admin-page { padding-top: .8rem; }
+  .admin-topbar { padding: .6rem .8rem; }
+  .admin-brand strong { font-size: .95rem; }
 }
 @media (max-width: 380px) { .grid-3, .grid-4 { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
